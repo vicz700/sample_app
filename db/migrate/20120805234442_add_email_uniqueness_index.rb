@@ -5,4 +5,4 @@ class AddEmailUniquenessIndex < ActiveRecord::Migration
   def self.down
     remove_index :users, :email
   end
-end                                    ``
+end
