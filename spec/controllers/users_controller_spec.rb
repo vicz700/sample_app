@@ -212,9 +212,13 @@ describe UsersController do
         response.should redirect_to(signin_path)
         flash[:notice].should =~ /sign in/i
       end
+      it "should not render delete links" do
+          get :index
+          response.should_not have_selector("a", :href => "/users/1", :content => "delete")
+      end
     end
 
-    describe "for signed-in users" do
+    describe "for regular signed-in users" do
       before(:each) do
         @user = test_sign_in(Factory(:user))
         second = Factory(:user, :name => "Bob", :email => "another@example.com")
@@ -233,12 +237,17 @@ describe UsersController do
         get :index
         response.should have_selector("title", :content => "All users")
       end
+      it "should not render delete links" do
+        get :index
+        response.should_not have_selector("a", :href => "/users/1", :content => "delete")
+      end
       it "should have an element for each user" do
         get :index
         @users[0..2].each do |user|
           response.should have_selector("li", :content => user.name)
         end
       end
+
       it "should paginate users" do
         get :index
         response.should have_selector("div.pagination")
@@ -247,6 +256,17 @@ describe UsersController do
                                       :content => "2")
         response.should have_selector("a", :href => "/users?page=2",
                                       :content => "Next")
+      end
+    end
+
+    describe "as an admin user" do
+      before(:each) do
+        admin = Factory(:user, :email => "admin@example.com", :admin => true)
+        test_sign_in(admin)
+      end
+      it "should render delete links" do
+        get :index
+        response.should have_selector("a", :href => "/users/1", :content => "delete")
       end
     end
 
@@ -271,13 +291,18 @@ describe UsersController do
     end
     describe "as an admin user" do
       before(:each) do
-        admin = Factory(:user, :email => "admin@example.com", :admin => true)
-        test_sign_in(admin)
+        @admin = Factory(:user, :email => "admin@example.com", :admin => true)
+        test_sign_in(@admin)
       end
       it "should destroy the user" do
         lambda do
           delete :destroy, :id => @user
         end.should change(User, :count).by(-1)
+      end
+      it "should not destroy themselves" do
+        lambda do
+          delete :destroy, :id => @admin
+        end.should_not change(User, :count)
       end
       it "should redirect to the users page" do
         delete :destroy, :id => @user
